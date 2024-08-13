@@ -1,0 +1,44 @@
+setup nodejs in evironment variable:
+
+https://classic.yarnpkg.com/lang/en/docs/install/#windows-stable
+Yarn
+Fast, reliable, and secure dependency management.
+
+rundll32 sysdm.cpl,EditEnvironmentVariables
+
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+%USERPROFILE%\AppData\Local\Microsoft\WindowsApps
+
+Automation:
+Command for running automation:
+ 
+$env:PASSWORD="Test1234t"; $env:TARGET_ENV="dev"; $env:USERNAME_DEFAULT="sampleadvisor4"; npx playwright test tests/ewm3/api --project=ewm3-api --workers=6 --ui
+
+npm i --save-dev @playwright/test
+
+[8/6 5:18 PM] Grover, Vipin (AssetMark, Contractor)
+[Yesterday 9:39 PM] Dorofeev, Oleg (AssetMark, Contractor)
+https://assetmark.atlassian.net/wiki/spaces/EWM30D/pages/293699621/Performance+Load+Testing
+ 
+confluence link
+Log in with Atlassian account
+Log in to Jira, Confluence, and all other Atlassian Cloud products here. Not an Atlassian user? Sign up for free.
+[Yesterday 9:43 PM] Dorofeev, Oleg (AssetMark, Contractor)
+run "npm run watch" before the test run(you need to keep it running all the time)  to rollup (to combine all depencecy files in 1 file. We are using it because of the imports issue)
+[Yesterday 9:46 PM] Dorofeev, Oleg (AssetMark, Contractor)
+for macos or linux 
+ 
+./k6 -e K6_BROWSER_HEADLESS=false -e K6_BROWSER_ARGS=no-sandbox -e TARGET_ENV=test -e TEST_DATA_CASE=min -e CREDENTIALS="[{'username':'sampleadvisor4','password':'Test1234t'}]" run --config ./src/local-run-options-single-thread.json --out=dashboard=report=reports/test-report.html dist/bic.js
+[4:03 PM] Grover, Vipin (AssetMark, Contractor)
+Login | Dynatrace - Have raised request for dynatrace. Could you please tell me who can approve this request?
+Login | Dynatrace
+Log in with Atlassian account
+Log in to Jira, Confluence, and all other Atlassian Cloud products here. Not an Atlassian user? Sign up for free.
+
+
+performance commands:
+
+./k6.exe -e K6_BROWSER_HEADLESS=false -e K6_BROWSER_ARGS=no-sandbox -e TARGET_ENV=test -e TEST_DATA_CASE=min -e CREDENTIALS="[{'username':'sampleadvisor4','password':'Test1234t'}]" run --config ./src/local-run-options-single-thread.json --out=web-dashboard=report=reports/test-report.html dist/bic.js
+
+npm install --save-dev rollup
