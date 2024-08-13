@@ -1,0 +1,11 @@
+{
+    "eslint.workingDirectories": [{ "mode": "auto" }],
+    "files.autoSave": "afterDelay",
+    "editor.tabSize": 2,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+    },
+    "eslint.validate": ["javascript"],
+    "javascript.suggest.autoImports": true,
+    "javascript.preferences.importModuleSpecifier": "relative"
+}

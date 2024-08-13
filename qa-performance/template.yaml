@@ -1,0 +1,129 @@
+parameters:
+  - name: K6_TEST_OPTIONS
+    type: object
+
+  - name: ENTRYPOINT
+    type: string
+
+  - name: TEST_RUN_TIMEOUT
+    type: number
+
+  - name: ITERATION_DELAY
+    type: number
+
+  - name: HTTP_REQUEST_DELAY
+    type: number
+
+  - name: HTTP_REQUEST_TIMEOUT
+    type: number
+
+  - name: TEST_DATA_CASE
+    type: string
+
+  - name: THINK_TIME
+    type: number
+
+stages:
+  - stage: "performance_testing_k6"
+    displayName: 'Performance tests'
+    jobs:
+      - job: performance_tests_k6
+        timeoutInMinutes: ${{ parameters.TEST_RUN_TIMEOUT }}
+        cancelTimeoutInMinutes: 2
+        pool:
+          vmImage: 'ubuntu-latest'
+          name: 'AzLinuxBld1'
+
+        steps:
+          - task: PowerShell@2
+            displayName: "Creating options.json file for test execution"
+            inputs:
+              targetType: 'inline'
+              script: |
+                $jsonContent = @"
+                ${{ convertToJson(parameters.K6_TEST_OPTIONS) }}
+                "@
+                echo $jsonContent
+                $jsonContent| Out-File -FilePath $(Build.ArtifactStagingDirectory)/options.json
+
+          - task: NodeTool@0
+            inputs:
+              versionSpec: "18.x"
+            displayName: "Install Node.js"
+
+          - script: |
+              npm ci && npm run build
+            displayName: "Install dependencies and build entrypoints"
+
+          - task: Docker@2
+            displayName: Build an image for k6
+            inputs:
+              command: build
+              buildContext: "$(Build.SourcesDirectory)"
+              dockerfile: $(Build.SourcesDirectory)/custom-k6-lib.dockerfile
+              repository: k6-amk
+              tags: |
+                latest
+
+          - bash: |
+              mkdir -m 777 pipeline-reports
+            displayName: "Creating results folder"
+
+          - script: |
+              curl -X POST --location "$(DT_URL)/api/v2/logs/ingest" \
+                -H "Authorization: Api-Token $(DT_TOKEN)" \
+                -H "Content-Type: application/json" \
+                -d "{
+                      \"content\": \"Performance testing start\",
+                      \"perf.test.action\": \"start\",
+                      \"perf.test.entrypoint\": \"${{ parameters.ENTRYPOINT }}\",
+                      \"perf.test.targetENV\": \"$(TARGET_ENV)\",
+                      \"perf.test.run\": \"$(TARGET_ENV)_$(Build.BuildNumber)\"
+                    }"
+            displayName: Notify start
+
+
+          - script: |
+              docker run \
+                -e K6_DYNATRACE_URL="$(DT_URL)" \
+                -e K6_DYNATRACE_APITOKEN="$(DT_TOKEN)" \
+                -e TARGET_ENV="$(TARGET_ENV)" \
+                -e CMS_TOKEN="$(CMS_TOKEN)" \
+                -e CREDENTIALS="$(CREDENTIALS)" \
+                -e EWM_2_CREDENTIALS="$(EWM_2_CREDENTIALS)" \
+                -e INGESTION_SECRET="$(INGESTION_SECRET)" \
+                -e ITERATION_DELAY="${{ parameters.ITERATION_DELAY }}" \
+                -e HTTP_REQUEST_DELAY="${{ parameters.HTTP_REQUEST_DELAY }}" \
+                -e HTTP_REQUEST_TIMEOUT="${{ parameters.HTTP_REQUEST_TIMEOUT }}" \
+                -e TEST_DATA_CASE="${{ parameters.TEST_DATA_CASE }}" \
+                -e THINK_TIME="${{ parameters.THINK_TIME }}" \
+                -v ./pipeline-reports:/home/k6/reports:rw --rm -i \
+                -v $(Build.ArtifactStagingDirectory)/options.json:/home/k6/options.json:rw --rm -i \
+                k6-amk run \
+                --config /home/k6/options.json \
+                --out output-dynatrace --out=dashboard=report=reports/test-report.html \
+                - < dist/${{ parameters.ENTRYPOINT }}.js
+            displayName: "Test run"
+
+
+          - script: |
+              curl -X POST --location "$(DT_URL)/api/v2/logs/ingest" \
+                -H "Authorization: Api-Token $(DT_TOKEN)" \
+                -H "Content-Type: application/json" \
+                -d "{
+                      \"content\": \"Performance testing end\",
+                      \"perf.test.action\": \"end\",
+                      \"perf.test.entrypoint\": \"${{ parameters.ENTRYPOINT }}\",
+                      \"perf.test.targetENV\": \"$(TARGET_ENV)\",
+                      \"perf.test.run\": \"$(TARGET_ENV)_$(Build.BuildNumber)\"
+                    }"
+            displayName: Notify finish
+            condition: always()
+
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: 'pipeline-reports'
+              artifact: "k6 performance results"
+              publishLocation: 'pipeline'
+            condition: always()
+

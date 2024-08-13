@@ -1,0 +1,137 @@
+trigger: none
+
+variables:
+  CI: true
+
+parameters:
+  - name: TEST_RUN_TIMEOUT
+    displayName: Pipeline run timeout (in minutes). Don't forget to increase it when you increase the duration of your test run
+    type: number
+    default: 15
+
+  - name: ENTRYPOINT
+    displayName: Test script
+    type: string
+    default: dashboard-login
+    values: [ dashboard-login, dashboard-widget-loading, ingestion, cms, cms-no-auth, client-section, api-insights, bic, investor-portal ]
+
+  - name: TEST_DATA_CASE
+    displayName: Test data case. If it possible, then specific count of data will be processed by API (For example count of processed accounts for BIC)
+    type: string
+    default: random
+    values: [ random, min, max]
+
+  - name: RUN_API_TEST
+    displayName: Run API test
+    type: boolean
+    default: true
+
+  - name: ITERATION_DELAY
+    displayName: Delay between each test iteration (in milliseconds)
+    type: number
+    default: 0
+
+  - name: HTTP_REQUEST_DELAY
+    displayName: Delay between each http request (in milliseconds)
+    type: number
+    default: 0
+
+  - name: HTTP_REQUEST_TIMEOUT
+    displayName: Http request timeout (in seconds)
+    type: number
+    default: 20
+
+  - name: THINK_TIME
+    displayName: Delay between consecutive user actions  (in seconds)
+    type: number
+    default: 10
+
+  - name: EXECUTOR_TYPE
+    displayName: API test executor type. Choose strategy for performance test. See https://k6.io/docs/using-k6/scenarios/executors/
+    type: string
+    default: ramping-vus
+    values: [ ramping-vus, constant-vus, shared-iterations ]
+
+  - name: TEST_ITERATIONS
+    displayName: Total count of performance test iterations (shared-iterations)
+    type: number
+    default: 500
+
+  - name: TEST_DURATION
+    displayName: Test duration (constant-vus/UI)/Max test duration (shared-iterations) in minutes. Doesn't work for ramping-vus
+    type: number
+    default: 10
+
+  - name: API_CONSTANT_USERS_NUMBER
+    displayName: Number of constant API virtual users (constant-vus/shared-iterations)
+    type: number
+    default: 1
+
+  - name: API_START_USERS_SETTINGS
+    displayName: Initial number of API virtual users (ramping-vus)
+    type: number
+    default: 10
+
+  - name: API_RAMP_USER_SETTINGS
+    displayName: Ramping settings for API virtual users (ramping-vus)
+    type: object
+    default:
+      - duration: 1m
+        target: 20
+      - duration: 2m
+        target: 100
+      - duration: 5m
+        target: 100
+      - duration: 2m
+        target: 0
+
+  - name: RUN_UI_TEST
+    displayName: Run UI test
+    type: boolean
+    default: false
+
+  - name: UI_CONSTANT_USERS_NUMBER
+    displayName: Number of constant UI virtual users (browser count)
+    type: number
+    default: 1
+
+stages:
+  - template: template.yaml
+    parameters:
+      ENTRYPOINT: ${{ parameters.ENTRYPOINT }}
+      TEST_DATA_CASE: ${{ parameters.TEST_DATA_CASE }}
+      TEST_RUN_TIMEOUT: ${{ parameters.TEST_RUN_TIMEOUT }}
+      ITERATION_DELAY: ${{ parameters.ITERATION_DELAY }}
+      HTTP_REQUEST_DELAY: ${{ parameters.HTTP_REQUEST_DELAY }}
+      HTTP_REQUEST_TIMEOUT: ${{ parameters.HTTP_REQUEST_TIMEOUT }}
+      THINK_TIME: ${{ parameters.THINK_TIME }}
+      K6_TEST_OPTIONS:
+          discardResponseBodies: true
+          scenarios:
+            ${{ if eq(parameters.RUN_UI_TEST, true ) }}:
+              ui:
+                executor: constant-vus
+                exec: uiTest
+                options:
+                  browser:
+                    type: 'chromium'
+                vus: ${{ parameters.UI_CONSTANT_USERS_NUMBER }}
+                duration: ${{ parameters.TEST_DURATION }}m
+            ${{ if eq(parameters.RUN_API_TEST, true ) }}:
+              api:
+                exec: apiTest
+                ${{ if eq(parameters.EXECUTOR_TYPE, 'ramping-vus' ) }}:
+                  executor: ${{ parameters.EXECUTOR_TYPE }}
+                  startVUs: ${{ parameters.API_START_USERS_SETTINGS }}
+                  stages: ${{ parameters.API_RAMP_USER_SETTINGS }}
+                ${{ if eq(parameters.EXECUTOR_TYPE, 'constant-vus' ) }}:
+                  executor: ${{ parameters.EXECUTOR_TYPE }}
+                  vus: ${{ parameters.API_CONSTANT_USERS_NUMBER }}
+                  duration: ${{ parameters.TEST_DURATION }}m
+                ${{ if eq(parameters.EXECUTOR_TYPE, 'shared-iterations' ) }}:
+                  executor: ${{ parameters.EXECUTOR_TYPE }}
+                  vus: ${{ parameters.API_CONSTANT_USERS_NUMBER }}
+                  iterations: ${{ parameters.TEST_ITERATIONS }}
+                  maxDuration: ${{ parameters.TEST_DURATION }}m
+
+

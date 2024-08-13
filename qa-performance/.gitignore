@@ -1,0 +1,13 @@
+/.idea
+/.vs
+/reports/*
+!/reports/.gitkeep
+/k6
+/k6.exe
+node_modules
+dist
+/start_test*
+/start-test*
+/start_test_local_IngestionAPI.bat
+/start_test_local_IngestionAPI_elastic.bat
+/src/local-run-options*

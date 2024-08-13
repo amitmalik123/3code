@@ -1,0 +1,24 @@
+{
+  "name": "k6-rollup",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "rollup --config",
+    "watch": "rollup --config --watch"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/k6": "^0.47.3",
+    "@typescript-eslint/eslint-plugin": "^7.17.0",
+    "@typescript-eslint/parser": "^7.17.0",
+    "eslint": "^8.57.0",
+    "glob": "^10.3.10",
+    "rollup": "^4.20.0"
+  },
+  "dependencies": {
+    "@eslint/js": "8.57"
+  }
+}
